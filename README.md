@@ -75,8 +75,8 @@ Key fields used in this project include:
 
 | Column | Description |
 |------|-------------|
-| practice_date_time | Scheduling workflow start time |
-| scheduled_datetime | Scheduling completion time |
+| Schedule_Start | Scheduling workflow start time |
+| Schedule_Completed | Scheduling completion time |
 | patient_id | Patient identifier (0 indicates not booked) |
 | slot_id | Selected appointment slot |
 | device_type | Device used to access scheduling |
