@@ -11,11 +11,13 @@ Healthcare self-scheduling systems allow patients to book appointments online th
 
 This behavior inflates drop-off metrics and results in **misleading scheduling conversion rates**.
 
-This project reconstructs **true scheduling sessions** from tab-level scheduling logs and performs **accurate funnel analysis** to identify where patients actually drop off in the scheduling process. The goal is to generate actionable insights that help healthcare providers improve scheduling conversion rates and operational efficiency.
+This project builds a **cloud-based analytics pipeline** that reconstructs true scheduling sessions from noisy tab-level logs, performs accurate funnel analysis, and identifies operational bottlenecks in patient self-scheduling workflows.
+
+The pipeline uses **AWS S3 for data ingestion, Snowflake for warehousing and transformation, and a visualization layer for analytics dashboards**.
 
 ---
 
-## Problem Statement
+# Problem Statement
 
 Raw scheduling logs capture **tab-level attempts**, not **user sessions**.
 
@@ -31,7 +33,7 @@ A patient opens the scheduling link in multiple tabs and completes booking from 
 | Tab 4 | Drop-off |
 | Tab 5 | Booked |
 
-Naive analysis would produce:
+Naive analytics result:
 
 ```
 Drop-offs = 4  
@@ -39,7 +41,7 @@ Bookings = 1
 Conversion Rate = 20%
 ```
 
-However, the actual user behavior is:
+Actual behavior:
 
 ```
 1 scheduling session  
@@ -55,19 +57,19 @@ Without correcting this data issue, healthcare organizations:
 
 ---
 
-## Project Objectives
+# Project Objectives
 
 This project aims to:
 
-1. Reconstruct **true scheduling sessions** from noisy scheduling logs
+1. Reconstruct **true scheduling sessions** from tab-level scheduling logs
 2. Correct inflated drop-off metrics caused by duplicate attempts
 3. Perform accurate **scheduling funnel analysis**
-4. Identify operational factors affecting booking conversion
-5. Provide recommendations to improve scheduling performance
+4. Build a **modern cloud data pipeline** using AWS and Snowflake
+5. Generate insights that help healthcare providers improve scheduling conversion
 
 ---
 
-## Dataset
+# Dataset
 
 The dataset represents scheduling attempts recorded by a healthcare scheduling system.
 
@@ -75,8 +77,8 @@ Key fields used in this project include:
 
 | Column | Description |
 |------|-------------|
-| Schedule_Start | Scheduling workflow start time |
-| Schedule_Completed | Scheduling completion time |
+| practice_date_time | Scheduling workflow start time |
+| scheduled_datetime | Scheduling completion time |
 | patient_id | Patient identifier (0 indicates not booked) |
 | slot_id | Selected appointment slot |
 | device_type | Device used to access scheduling |
@@ -94,79 +96,177 @@ Important dataset characteristics:
 
 ---
 
-## Project Architecture
+# Project Architecture
+
+The pipeline simulates a **modern analytics engineering workflow**.
 
 ```
-Raw Scheduling Logs
-        │
-        ▼
-Session Reconstruction Logic
-        │
-        ▼
-Session-Level Fact Table
-        │
-        ▼
-Scheduling Funnel Analysis
-        │
-        ▼
-Operational Insights & Recommendations
+CSV Dataset
+     │
+     ▼
+AWS S3 (Raw Data Lake)
+     │
+     ▼
+Snowflake External Stage
+     │
+     ▼
+Snowflake Staging Tables
+     │
+     ▼
+SQL Transformation Layer
+(Session Reconstruction)
+     │
+     ▼
+Fact & Dimension Tables
+     │
+     ▼
+Semantic Views
+     │
+     ▼
+Analytics Dashboard
 ```
 
 ---
 
-## Methodology
+# Data Pipeline Workflow
 
-### 1. Session Reconstruction
+### 1. Raw Data Ingestion
 
-Scheduling sessions are reconstructed using a device-level fingerprint:
+The raw dataset is stored as a CSV file and uploaded to **AWS S3**.
+
+```
+Local CSV → AWS S3
+```
+
+S3 acts as the **raw data lake layer**.
+
+---
+
+### 2. Snowflake Data Loading
+
+Snowflake reads the CSV file from S3 using an **external stage** and loads it into a raw table.
+
+```
+S3 → Snowflake Raw Table
+```
+
+Example:
+
+```
+raw_scheduling_logs
+```
+
+---
+
+### 3. Staging Layer
+
+The staging layer performs basic cleaning and standardization:
+
+- timestamp formatting
+- null handling
+- removing invalid records
+- standardizing fields
+
+Example table:
+
+```
+stg_scheduling_logs
+```
+
+---
+
+### 4. Session Reconstruction
+
+Scheduling sessions are reconstructed using:
 
 - IPv4
 - device_type
-- browser_name
-- location attributes
+- browser
+- geographic attributes
 - time-based session window
 
-A new session is created when the time gap between scheduling attempts exceeds **30 minutes**.
+A new session is created when the gap between attempts exceeds **30 minutes**.
 
 SQL window functions are used to identify session boundaries.
 
 ---
 
-### 2. Session Outcome Identification
+### 5. Data Warehouse Modeling
 
-For each reconstructed session:
+The transformed dataset is modeled using **fact and dimension tables**.
+
+Example tables:
 
 ```
-If any record contains a valid patient_id
-→ session = booked
-
-Otherwise
-→ session = drop-off
+fact_scheduling_sessions
+dim_location
+dim_provider
+dim_device
+dim_geography
 ```
 
-This produces a **session-level dataset** for accurate analysis.
+This structure enables scalable analytics.
 
 ---
 
-### 3. Scheduling Funnel Analysis
+### 6. Semantic Layer
 
-After session reconstruction, funnel stages are analyzed.
+Semantic views simplify analytics queries.
 
-Example funnel:
+Example views:
+
+```
+vw_scheduling_funnel
+vw_booking_conversion
+vw_location_performance
+vw_device_performance
+```
+
+Dashboards query these views instead of raw tables.
+
+---
+
+### 7. Visualization Layer
+
+A visualization tool is used to create dashboards for:
+
+- scheduling funnel
+- conversion metrics
+- provider performance
+- device performance
+- geographic insights
+
+---
+
+### 8. Monitoring
+
+AWS monitoring services track pipeline activity.
+
+Monitoring includes:
+
+- S3 data ingestion
+- Snowflake load status
+- pipeline execution metrics
+
+---
+
+# Scheduling Funnel
+
+After session reconstruction, the scheduling funnel can be analyzed accurately.
 
 ```
 Scheduling Started
-      ↓
+        ↓
 Slot Selected
-      ↓
+        ↓
 Appointment Booked
 ```
 
-Drop-offs are calculated using reconstructed sessions instead of raw records.
+Drop-offs are calculated using **reconstructed sessions rather than raw attempts**.
 
 ---
 
-## Key Metrics
+# Key Metrics
 
 ### Session Metrics
 
@@ -174,7 +274,7 @@ Drop-offs are calculated using reconstructed sessions instead of raw records.
 - Successful booking sessions
 - Session conversion rate
 - Average attempts per session
-- Average scheduling completion time
+- Average scheduling duration
 
 ---
 
@@ -203,20 +303,18 @@ Drop-offs are calculated using reconstructed sessions instead of raw records.
 
 ---
 
-## Example Insights
+# Example Insights
 
-Example insights generated by the analysis:
+Example insights produced by the analysis:
 
 - Multi-tab behavior inflated drop-off metrics by **~38%**
 - Mobile users required **2.1× more attempts before booking**
-- Certain clinic locations show significantly lower scheduling conversion
+- Certain locations showed significantly lower scheduling conversion rates
 - Some providers have high scheduling attempts but low booking completion
 
 ---
 
-## Business Recommendations
-
-Based on the analysis, the following improvements are recommended:
+# Business Recommendations
 
 ### Persistent Session Tracking
 
@@ -224,7 +322,7 @@ Introduce a **session identifier across browser tabs and refreshes** to improve 
 
 ### Improve Mobile Scheduling UX
 
-Mobile users show higher repeated attempts, suggesting user interface friction.
+Mobile users show higher repeated attempts, suggesting scheduling UI friction.
 
 ### Optimize Provider Slot Availability
 
@@ -236,17 +334,22 @@ Direct patients to providers with shorter wait times to improve booking conversi
 
 ---
 
-## Technologies Used
+# Technologies Used
 
-- SQL (Window Functions, Aggregations)
-- Python
-- Snowflake / Data Warehouse
-- GitHub
-- Data Modeling
+| Layer | Technology |
+|------|------------|
+Data Source | CSV Dataset |
+Development | VS Code |
+Cloud Storage | AWS S3 |
+Data Warehouse | Snowflake |
+Transformation | SQL |
+Semantic Layer | Snowflake Views |
+Visualization | Dashboard Tool |
+Monitoring | AWS Monitoring Services |
 
 ---
 
-## Repository Structure
+# Repository Structure
 
 ```
 healthcare-scheduling-session-reconstruction-funnel-analytics/
@@ -261,13 +364,14 @@ sql/
     analytics/
 
 python/
-    session_builder.py
     data_loader.py
+    session_builder.py
 
 models/
     fact_scheduling_sessions.sql
     dim_location.sql
     dim_provider.sql
+    dim_device.sql
 
 docs/
     methodology.md
@@ -276,32 +380,33 @@ docs/
 
 ---
 
-## Skills Demonstrated
+# Skills Demonstrated
 
 This project demonstrates:
 
-- Data quality correction
+- Cloud data pipeline design
+- AWS S3 data ingestion
+- Snowflake data warehousing
 - Session reconstruction using SQL window functions
-- Behavioral analytics
-- Funnel analysis
-- Data modeling
+- Data modeling with fact & dimension tables
+- Funnel analytics
 - Operational insight generation
 
 ---
 
-## Future Improvements
+# Future Improvements
 
 Potential enhancements include:
 
 - Cross-device session stitching
-- Real-time scheduling analytics pipeline
-- Machine learning models for booking prediction
-- Anomaly detection for scheduling performance
-- Provider capacity optimization models
+- automated pipeline orchestration
+- machine learning models for booking prediction
+- anomaly detection for scheduling performance
+- provider capacity optimization models
 
 ---
 
-## Author
+# Author
 
 Gunabhiram Billa  
 Data Analyst | Data Engineering Enthusiast
