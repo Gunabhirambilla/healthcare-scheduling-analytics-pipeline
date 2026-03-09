@@ -1,2 +1,307 @@
-# healthcare-scheduling-analytics-pipeline
-Healthcare scheduling analytics project that reconstructs patient scheduling sessions from noisy tab-level logs, performs funnel analysis to identify true drop-off points, and generates operational insights to improve appointment booking conversion.
+# Healthcare Scheduling Session Reconstruction & Funnel Analytics
+
+## Overview
+
+Healthcare self-scheduling systems allow patients to book appointments online through scheduling widgets. However, scheduling logs often record **each scheduling attempt as a separate record**, including cases where users:
+
+- open multiple browser tabs
+- refresh the scheduling page
+- restart the scheduling workflow
+- attempt booking from multiple devices
+
+This behavior inflates drop-off metrics and results in **misleading scheduling conversion rates**.
+
+This project reconstructs **true scheduling sessions** from tab-level scheduling logs and performs **accurate funnel analysis** to identify where patients actually drop off in the scheduling process. The goal is to generate actionable insights that help healthcare providers improve scheduling conversion rates and operational efficiency.
+
+---
+
+## Problem Statement
+
+Raw scheduling logs capture **tab-level attempts**, not **user sessions**.
+
+Example scenario:
+
+A patient opens the scheduling link in multiple tabs and completes booking from one of them.
+
+| Attempt | Outcome |
+|--------|--------|
+| Tab 1 | Drop-off |
+| Tab 2 | Drop-off |
+| Tab 3 | Drop-off |
+| Tab 4 | Drop-off |
+| Tab 5 | Booked |
+
+Naive analysis would produce:
+
+```
+Drop-offs = 4  
+Bookings = 1  
+Conversion Rate = 20%
+```
+
+However, the actual user behavior is:
+
+```
+1 scheduling session  
+1 successful booking  
+Conversion Rate = 100%
+```
+
+Without correcting this data issue, healthcare organizations:
+
+- overestimate scheduling drop-offs
+- underestimate booking conversion rates
+- misidentify operational problems in scheduling workflows
+
+---
+
+## Project Objectives
+
+This project aims to:
+
+1. Reconstruct **true scheduling sessions** from noisy scheduling logs
+2. Correct inflated drop-off metrics caused by duplicate attempts
+3. Perform accurate **scheduling funnel analysis**
+4. Identify operational factors affecting booking conversion
+5. Provide recommendations to improve scheduling performance
+
+---
+
+## Dataset
+
+The dataset represents scheduling attempts recorded by a healthcare scheduling system.
+
+Key fields used in this project include:
+
+| Column | Description |
+|------|-------------|
+| practice_date_time | Scheduling workflow start time |
+| scheduled_datetime | Scheduling completion time |
+| patient_id | Patient identifier (0 indicates not booked) |
+| slot_id | Selected appointment slot |
+| device_type | Device used to access scheduling |
+| location_id | Clinic location |
+| provider_id | Healthcare provider |
+| appointment_type_id | Type of visit |
+| IPv4 | User IP address |
+| city/state/postal | Geographic information |
+
+Important dataset characteristics:
+
+- Each browser tab generates a **separate record**
+- Only successful bookings produce a **valid patient_id**
+- Multiple attempts may belong to the **same scheduling session**
+
+---
+
+## Project Architecture
+
+```
+Raw Scheduling Logs
+        │
+        ▼
+Session Reconstruction Logic
+        │
+        ▼
+Session-Level Fact Table
+        │
+        ▼
+Scheduling Funnel Analysis
+        │
+        ▼
+Operational Insights & Recommendations
+```
+
+---
+
+## Methodology
+
+### 1. Session Reconstruction
+
+Scheduling sessions are reconstructed using a device-level fingerprint:
+
+- IPv4
+- device_type
+- browser_name
+- location attributes
+- time-based session window
+
+A new session is created when the time gap between scheduling attempts exceeds **30 minutes**.
+
+SQL window functions are used to identify session boundaries.
+
+---
+
+### 2. Session Outcome Identification
+
+For each reconstructed session:
+
+```
+If any record contains a valid patient_id
+→ session = booked
+
+Otherwise
+→ session = drop-off
+```
+
+This produces a **session-level dataset** for accurate analysis.
+
+---
+
+### 3. Scheduling Funnel Analysis
+
+After session reconstruction, funnel stages are analyzed.
+
+Example funnel:
+
+```
+Scheduling Started
+      ↓
+Slot Selected
+      ↓
+Appointment Booked
+```
+
+Drop-offs are calculated using reconstructed sessions instead of raw records.
+
+---
+
+## Key Metrics
+
+### Session Metrics
+
+- Total scheduling sessions
+- Successful booking sessions
+- Session conversion rate
+- Average attempts per session
+- Average scheduling completion time
+
+---
+
+### Data Quality Metrics
+
+- Drop-off inflation rate
+- Duplicate tab behavior
+- Session reconstruction accuracy
+
+---
+
+### Funnel Metrics
+
+- Drop-offs before slot selection
+- Drop-offs after slot selection
+- Booking conversion rate
+
+---
+
+### Operational Metrics
+
+- Booking rate by device type
+- Booking rate by location
+- Booking rate by provider
+- Geographic booking distribution
+
+---
+
+## Example Insights
+
+Example insights generated by the analysis:
+
+- Multi-tab behavior inflated drop-off metrics by **~38%**
+- Mobile users required **2.1× more attempts before booking**
+- Certain clinic locations show significantly lower scheduling conversion
+- Some providers have high scheduling attempts but low booking completion
+
+---
+
+## Business Recommendations
+
+Based on the analysis, the following improvements are recommended:
+
+### Persistent Session Tracking
+
+Introduce a **session identifier across browser tabs and refreshes** to improve scheduling analytics accuracy.
+
+### Improve Mobile Scheduling UX
+
+Mobile users show higher repeated attempts, suggesting user interface friction.
+
+### Optimize Provider Slot Availability
+
+Certain locations have higher drop-offs due to limited appointment availability.
+
+### Intelligent Provider Routing
+
+Direct patients to providers with shorter wait times to improve booking conversion.
+
+---
+
+## Technologies Used
+
+- SQL (Window Functions, Aggregations)
+- Python
+- Snowflake / Data Warehouse
+- GitHub
+- Data Modeling
+
+---
+
+## Repository Structure
+
+```
+healthcare-scheduling-session-reconstruction-funnel-analytics/
+
+data/
+    raw/
+    processed/
+
+sql/
+    staging/
+    session_reconstruction/
+    analytics/
+
+python/
+    session_builder.py
+    data_loader.py
+
+models/
+    fact_scheduling_sessions.sql
+    dim_location.sql
+    dim_provider.sql
+
+docs/
+    methodology.md
+    insights.md
+```
+
+---
+
+## Skills Demonstrated
+
+This project demonstrates:
+
+- Data quality correction
+- Session reconstruction using SQL window functions
+- Behavioral analytics
+- Funnel analysis
+- Data modeling
+- Operational insight generation
+
+---
+
+## Future Improvements
+
+Potential enhancements include:
+
+- Cross-device session stitching
+- Real-time scheduling analytics pipeline
+- Machine learning models for booking prediction
+- Anomaly detection for scheduling performance
+- Provider capacity optimization models
+
+---
+
+## Author
+
+Gunabhiram Billa  
+Data Analyst | Data Engineering Enthusiast
